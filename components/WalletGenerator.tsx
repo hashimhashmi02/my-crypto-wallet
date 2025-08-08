@@ -1,3 +1,4 @@
+// components/ui/WalletGenerator.tsx
 "use client";
 import { ethers } from "ethers";
 import { Keypair } from "@solana/web3.js";
@@ -17,16 +18,12 @@ interface Wallet {
 const WalletGenerator = () => {
   const [mnemonicWords, setMnemonicWords] = useState<string[]>([]);
   const [wallets, setWallets] = useState<Wallet[]>([]);
-  const [pathType, setPathType] = useState<string>('');
+  const [pathType, setPathType] = useState<string>("");
   const [mnemonicInput, setMnemonicInput] = useState<string>("");
   const [visiblePrivateKeys, setVisiblePrivateKeys] = useState<boolean[]>([]);
-  const [uiStep, setUiStep] = useState('initial'); // 'initial', 'showMnemonic', 'showWallets'
+  const [uiStep, setUiStep] = useState<"initial" | "showMnemonic" | "showWallets">("initial");
 
-  const deriveWallet = (
-    mnemonic: string,
-    currentPathType: string,
-    accountIndex: number
-  ): Wallet | null => {
+  const deriveWallet = (mnemonic: string, currentPathType: string, accountIndex: number) => {
     if (!ethers.Mnemonic.isValidMnemonic(mnemonic)) {
       toast.error("Invalid recovery phrase.");
       return null;
@@ -46,14 +43,14 @@ const WalletGenerator = () => {
         return {
           publicKey: keypair.publicKey.toBase58(),
           privateKey: bs58.encode(secretKey),
-          path
+          path,
         };
       } else {
         toast.error("Unsupported blockchain selected.");
         return null;
       }
-    } catch (error) {
-      console.error("Derivation Error:", error);
+    } catch (err) {
+      console.error("Derivation Error:", err);
       toast.error("Failed to derive wallet.");
       return null;
     }
@@ -64,10 +61,9 @@ const WalletGenerator = () => {
     if (!mnemonicToUse) {
       mnemonicToUse = ethers.Mnemonic.fromEntropy(ethers.randomBytes(16)).phrase;
     }
-
     if (ethers.Mnemonic.isValidMnemonic(mnemonicToUse)) {
       setMnemonicWords(mnemonicToUse.split(" "));
-      setUiStep('showMnemonic');
+      setUiStep("showMnemonic");
     } else {
       toast.error("Invalid recovery phrase.");
     }
@@ -76,61 +72,57 @@ const WalletGenerator = () => {
   const handleConfirmAndCreateWallets = () => {
     const mnemonic = mnemonicWords.join(" ");
     const newWallet = deriveWallet(mnemonic, pathType, 0);
-
     if (newWallet) {
       setWallets([newWallet]);
       setVisiblePrivateKeys([false]);
-      setUiStep('showWallets');
+      setUiStep("showWallets");
       toast.success("Wallet generated successfully!");
     }
   };
 
   const handleAddWallet = () => {
-    if (mnemonicWords.length === 0) {
+    if (!mnemonicWords.length) {
       toast.error("Generate or import a wallet first.");
       return;
     }
-    const newAccountIndex = wallets.length;
+    const idx = wallets.length;
     const mnemonic = mnemonicWords.join(" ");
-    const newWallet = deriveWallet(mnemonic, pathType, newAccountIndex);
+    const newWallet = deriveWallet(mnemonic, pathType, idx);
     if (newWallet) {
-      setWallets(prev => [...prev, newWallet]);
-      setVisiblePrivateKeys(prev => [...prev, false]);
-      toast.success(`Account ${newAccountIndex + 1} added successfully!`);
+      setWallets((w) => [...w, newWallet]);
+      setVisiblePrivateKeys((v) => [...v, false]);
+      toast.success(`Account ${idx + 1} added successfully!`);
     }
   };
 
   const handleClearWallets = () => {
     setWallets([]);
     setMnemonicWords([]);
-    setPathType('');
+    setPathType("");
     setVisiblePrivateKeys([]);
-    setUiStep('initial');
+    setUiStep("initial");
     toast.success("All wallets cleared.");
   };
 
-  const togglePrivateKeyVisibility = (index: number) => {
-    setVisiblePrivateKeys(
-      visiblePrivateKeys.map((visible, i) => (i === index ? !visible : visible))
-    );
+  const togglePrivateKeyVisibility = (i: number) => {
+    setVisiblePrivateKeys((v) => v.map((vis, idx) => (idx === i ? !vis : vis)));
   };
 
   useEffect(() => {
-    const storedWallets = localStorage.getItem("wallets");
-    const storedMnemonic = localStorage.getItem("mnemonics");
-    const storedPath = localStorage.getItem("pathType");
-    if (storedWallets && storedMnemonic && storedPath) {
-      const parsedWallets: Wallet[] = JSON.parse(storedWallets);
-      setMnemonicWords(JSON.parse(storedMnemonic));
-      setWallets(parsedWallets);
-      setPathType(JSON.parse(storedPath));
-      setVisiblePrivateKeys(new Array(parsedWallets.length).fill(false));
-      setUiStep('showWallets');
+    const w = localStorage.getItem("wallets");
+    const m = localStorage.getItem("mnemonics");
+    const p = localStorage.getItem("pathType");
+    if (w && m && p) {
+      setWallets(JSON.parse(w));
+      setMnemonicWords(JSON.parse(m));
+      setPathType(JSON.parse(p));
+      setVisiblePrivateKeys(new Array(JSON.parse(w).length).fill(false));
+      setUiStep("showWallets");
     }
   }, []);
 
   useEffect(() => {
-    if (wallets.length > 0) {
+    if (wallets.length) {
       localStorage.setItem("wallets", JSON.stringify(wallets));
       localStorage.setItem("mnemonics", JSON.stringify(mnemonicWords));
       localStorage.setItem("pathType", JSON.stringify(pathType));
@@ -143,7 +135,7 @@ const WalletGenerator = () => {
 
   return (
     <div className="flex flex-col gap-8 p-4 max-w-4xl mx-auto">
-      {uiStep === 'initial' && (
+      {uiStep === "initial" && (
         <div>
           {!pathType ? (
             <div className="text-center my-12">
@@ -175,7 +167,7 @@ const WalletGenerator = () => {
                   placeholder="Enter your secret phrase..."
                   className="flex-grow p-2 border rounded-md"
                   value={mnemonicInput}
-                  onChange={e => setMnemonicInput(e.target.value)}
+                  onChange={(e) => setMnemonicInput(e.target.value)}
                 />
                 <button
                   className="px-8 py-2 bg-teal-600 text-white rounded-lg"
@@ -189,16 +181,16 @@ const WalletGenerator = () => {
         </div>
       )}
 
-      {uiStep === 'showMnemonic' && (
+      {uiStep === "showMnemonic" && (
         <div className="my-12 text-center">
           <h1 className="text-4xl font-bold tracking-tight">Save Your Secret Phrase!</h1>
           <p className="text-red-500 mt-2">
             This is the only way to recover your wallet. Store it somewhere safe.
           </p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 my-6 border rounded-lg bg-gray-50 dark:bg-gray-800">
-            {mnemonicWords.map((word, index) => (
-              <p key={index} className="p-2 font-mono">
-                {index + 1}. {word}
+            {mnemonicWords.map((w, i) => (
+              <p key={i} className="p-2 font-mono">
+                {i + 1}. {w}
               </p>
             ))}
           </div>
@@ -211,15 +203,12 @@ const WalletGenerator = () => {
         </div>
       )}
 
-      {uiStep === 'showWallets' && wallets.length > 0 && (
+      {uiStep === "showWallets" && wallets.length > 0 && (
         <div>
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-3xl font-extrabold tracking-tighter">Your Wallets</h2>
             <div className="flex gap-2">
-              <button
-                className="px-4 py-2 bg-teal-500 text-white rounded-lg"
-                onClick={handleAddWallet}
-              >
+              <button className="px-4 py-2 bg-teal-500 text-white rounded-lg" onClick={handleAddWallet}>
                 Add Account
               </button>
               <button
@@ -231,9 +220,9 @@ const WalletGenerator = () => {
             </div>
           </div>
           <div className="grid gap-6">
-            {wallets.map((wallet, index) => (
+            {wallets.map((wallet, idx) => (
               <div key={wallet.publicKey} className="flex flex-col p-6 border rounded-2xl">
-                <h3 className="font-bold text-2xl tracking-tighter">Account {index + 1}</h3>
+                <h3 className="font-bold text-2xl tracking-tighter">Account {idx + 1}</h3>
                 <p className="text-sm text-gray-400 mb-4">{wallet.path}</p>
                 <div className="mb-4">
                   <span className="font-bold text-lg">Public Key / Address</span>
@@ -243,11 +232,11 @@ const WalletGenerator = () => {
                   <span className="font-bold text-lg">Private Key</span>
                   <div className="flex items-center gap-2">
                     <p className="text-gray-600 font-mono break-all flex-grow">
-                      {visiblePrivateKeys[index]
+                      {visiblePrivateKeys[idx]
                         ? wallet.privateKey
                         : "••••••••••••••••••••••••••••••••••••••••"}
                     </p>
-                    <button onClick={() => togglePrivateKeyVisibility(index)}>
+                    <button onClick={() => togglePrivateKeyVisibility(idx)}>
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="20"
